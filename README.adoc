@@ -1,0 +1,19 @@
+= griffon-tornadofx
+:linkattrs:
+:project-name: griffon-tornadofx
+
+image:https://img.shields.io/travis/griffon/{project-name}/master.svg["Build Status", link="https://travis-ci.org/griffon/{project-name}"]
+image:https://img.shields.io/coveralls/griffon/{project-name}/master.svg["Coverage Status", link="https://coveralls.io/r/griffon/{project-name}"]
+image:https://img.shields.io/badge/license-ASF2-blue.svg["Apache License 2", link="http://www.apache.org/licenses/LICENSE-2.0.txt"]
+image:https://img.shields.io/maven-central/v/org.codehaus.griffon.plugins/{project-name}.svg[Download, link="https://search.maven.org/#search|ga|1|{project-name}"]
+image:https://img.shields.io/bintray/v/griffon/griffon/{project-name}.svg[Download, link="https://bintray.com/griffon/griffon/{project-name}"]
+
+image:https://img.shields.io/gitter/room/griffon/griffon.svg[link="https://gitter.im/griffon/griffon]
+image:https://img.shields.io/badge/donations-Patreon-f96854.svg[link="https://www.patreon.com/user?u=6609318"]
+
+---
+
+link:https://github.com/edvin/tornadofx[TornadoFX, window="_blank"] integration.
+
+Refer to the link:http://griffon.github.io/griffon-tornadofx/[plugin guide, window="_blank"] for
+further information on TornadoFX and usage.

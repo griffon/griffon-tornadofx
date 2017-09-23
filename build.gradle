@@ -1,0 +1,200 @@
+/*
+ * Copyright 2017 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import java.text.SimpleDateFormat
+
+buildscript {
+    repositories {
+        jcenter()
+        maven { url 'http://dl.bintray.com/pledbrook/plugins' }
+        maven { url 'https://plugins.gradle.org/m2/' }
+    }
+
+    dependencies {
+        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.8.1'
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'org.ajoberstar:gradle-git:1.7.2'
+        classpath 'uk.co.cacoethes:lazybones-gradle:1.2.4'
+        classpath 'org.kordamp.gradle:stats-gradle-plugin:0.2.0'
+        classpath 'com.github.ben-manes:gradle-versions-plugin:0.15.0'
+        classpath 'net.nemerosa:versioning:2.6.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+        classpath 'gradle.plugin.net.ossindex:ossindex-gradle-plugin:0.1.1'
+        classpath 'org.kordamp.gradle:jdeps-gradle-plugin:0.2.0'
+        classpath 'net.ltgt.gradle:gradle-apt-plugin:0.10'
+        classpath "org.codehaus.griffon:gradle-griffon-build-plugin:$griffonVersion"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}"
+    }
+}
+
+apply from: 'gradle/idea.gradle'
+apply plugin: 'jacoco'
+apply plugin: 'com.github.kt3k.coveralls'
+apply plugin: 'net.nemerosa.versioning'
+apply plugin: 'org.ajoberstar.github-pages'
+apply plugin: 'org.codehaus.griffon.griffon-build'
+apply from: 'gradle/bom.gradle'
+
+jacoco {
+    toolVersion = jacocoVersion
+}
+
+Date buildTimeAndDate = new Date()
+ext {
+    buildBy = System.properties['user.name']
+    buildDate = new SimpleDateFormat('yyyy-MM-dd').format(buildTimeAndDate)
+    buildTime = new SimpleDateFormat('HH:mm:ss.SSSZ').format(buildTimeAndDate)
+    buildRevision = versioning.info.commit
+    buildCreatedBy = "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})".toString()
+    jacocoProjects = []
+    resourceFilePatterns = [
+        '**/*.properties',
+        '**/*.groovy',
+        '**/*.html',
+        '**/*.xml',
+        '**/*.txt'
+    ]
+}
+
+allprojects {
+    apply plugin: 'base'
+    apply plugin: 'idea'
+    apply plugin: 'com.github.ben-manes.versions'
+    apply plugin: 'org.kordamp.gradle.stats'
+    apply plugin: 'net.ossindex.audit'
+
+    repositories {
+        jcenter()
+    }
+
+    if (JavaVersion.current().isJava8Compatible()) {
+        tasks.withType(Javadoc) {
+            options.addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+
+    dependencyUpdates.resolutionStrategy = {
+        componentSelection { rules ->
+            rules.all { selection ->
+                boolean rejected = ['alpha', 'beta', 'rc', 'cr', 'm'].any { qualifier ->
+                    selection.candidate.version ==~ /(?i).*[.-]${qualifier}[.\d-]*/
+                }
+                if (rejected) {
+                    selection.reject('Release candidate')
+                }
+            }
+        }
+    }
+
+    audit {
+        failOnError = false
+    }
+}
+
+subprojects { subproj ->
+    plugins.withType(JavaPlugin) {
+        subproj.tasks.withType(JavaCompile) {
+            sourceCompatibility = subproj.sourceCompatibility
+            targetCompatibility = subproj.targetCompatibility
+        }
+
+        subproj.tasks.withType(GroovyCompile) {
+            sourceCompatibility = subproj.sourceCompatibility
+            targetCompatibility = subproj.targetCompatibility
+        }
+
+        dependencies {
+            testCompile "junit:junit:$junitVersion"
+            testCompile "org.codehaus.groovy:groovy-all:$groovyVersion"
+            testCompile("org.spockframework:spock-core:$spockVersion") {
+                exclude group: 'org.codehaus.groovy', module:' groovy-all'
+            }
+            testCompile "org.slf4j:slf4j-simple:$slf4jVersion"
+        }
+
+        task sourceJar(type: Jar) {
+            group 'Build'
+            description 'An archive of the source code'
+            classifier 'sources'
+            from sourceSets.main.allSource
+        }
+
+        task javadocJar(type: Jar) {
+            group 'Build'
+            description 'An archive of the Javadocs'
+            classifier 'javadoc'
+            from javadoc.destinationDir
+        }
+
+        tasks.withType(AbstractCompile) {
+            if (rootProject.hasProperty('lint') && rootProject.lint.toBoolean()) {
+                options.compilerArgs = [
+                    '-Xlint:all', '-Xlint:deprecation', '-Xlint:unchecked'
+                ]
+            }
+        }
+
+        subproj.apply from: rootProject.file('gradle/publishing.gradle')
+        subproj.apply from: rootProject.file('gradle/code-quality.gradle')
+
+        if (subproj.publishJars.toBoolean()) {
+            subproj.apply from: rootProject.file('gradle/docs.gradle')
+        }
+
+        subproj.test.testLogging { exceptionFormat 'full' }
+    }
+}
+
+evaluationDependsOnChildren()
+
+if (!project.hasProperty('githubUsername')) ext.githubUsername = ''
+if (!project.hasProperty('githubPassword')) ext.githubPassword = ''
+
+githubPages {
+    repoUri = project.projectVcsUrl
+    pages {
+        from project(":${pluginBaseName}-guide").guide.outputs.files
+    }
+
+    credentials {
+        username = githubUsername
+        password = githubPassword
+    }
+}
+
+publishGhPages.dependsOn(project(":${pluginBaseName}-guide").guide)
+
+coveralls {
+    sourceDirs = jacocoProjects.sourceSets.main.allSource.srcDirs.flatten()
+    jacocoReportPath = "${buildDir}/reports/jacoco/report.xml"
+}
+
+task jacocoRootReport(type: org.gradle.testing.jacoco.tasks.JacocoReport) {
+    group = 'Reporting'
+    description = 'Aggregate Jacoco coverage reports.'
+    dependsOn = jacocoProjects.test
+    additionalSourceDirs = files(jacocoProjects.sourceSets.main.allSource.srcDirs)
+    sourceDirectories = files(jacocoProjects.sourceSets.main.allSource.srcDirs)
+    classDirectories =  files(jacocoProjects.sourceSets.main.output)
+    executionData = files(jacocoProjects.jacocoTestReport.executionData)
+    reports {
+        xml.enabled true
+        html.enabled true
+        xml.destination file("${buildDir}/reports/jacoco/report.xml")
+        html.destination file("${buildDir}/reports/jacoco/html")
+    }
+}
