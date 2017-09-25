@@ -13,16 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.griffon.runtime.tornadofx
+package griffon.javafx.utils
 
-import griffon.javafx.collections.GriffonFXCollections
-import griffon.javafx.collections.MappingObservableList
 import griffon.javafx.support.JavaFXAction
 import griffon.javafx.support.JavaFXUtils
-import javafx.beans.value.ObservableValue
-import javafx.collections.ObservableList
-import javafx.collections.ObservableMap
-import javafx.collections.ObservableSet
 import javafx.scene.Node
 import javafx.scene.chart.Axis
 import javafx.scene.control.ButtonBase
@@ -37,31 +31,10 @@ import javafx.scene.control.Tab
 import javafx.scene.control.TableColumn
 import javafx.scene.control.ToggleButton
 import javafx.scene.image.Image
-import java.util.function.Function
 
 /**
  * @author Andres Almiray
  */
-
-fun <T> ObservableList<T>.uiThreadAware(): ObservableList<T> {
-    return GriffonFXCollections.uiThreadAwareObservableList(this)
-}
-
-fun <T> ObservableSet<T>.uiThreadAware(): ObservableSet<T> {
-    return GriffonFXCollections.uiThreadAwareObservableSet(this)
-}
-
-fun <K, V> ObservableMap<K, V>.uiThreadAware(): ObservableMap<K, V> {
-    return GriffonFXCollections.uiThreadAwareObservableMap(this)
-}
-
-fun <T, S> ObservableList<S>.mappedAs(mapper: Function<S, T>): ObservableList<T> {
-    return MappingObservableList<T, S>(this, mapper)
-}
-
-fun <T, S> ObservableList<S>.mappedAs(mapper: ObservableValue<Function<S, T>>): ObservableList<T> {
-    return MappingObservableList<T, S>(this, mapper)
-}
 
 fun ButtonBase.configure(action: JavaFXAction) {
     JavaFXUtils.configure(this, action)
